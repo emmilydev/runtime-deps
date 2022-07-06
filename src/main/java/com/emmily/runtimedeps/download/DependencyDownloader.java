@@ -1,8 +1,12 @@
 package com.emmily.runtimedeps.download;
 
 import com.emmily.runtimedeps.MavenDependency;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -22,7 +26,7 @@ public interface DependencyDownloader {
    * @return The <b>pom.xml</b> file of the given
    * {@code dependency}.
    */
-  File downloadPom(MavenDependency dependency);
+  File downloadPom(MavenDependency dependency) throws IOException;
 
   /**
    * Downloads the <b>JAR</b> file of the given
@@ -32,7 +36,7 @@ public interface DependencyDownloader {
    * @return The <b>JAR</b> file of the given
    * {@code dependency}.
    */
-  File downloadJar(MavenDependency dependency);
+  File downloadJar(MavenDependency dependency) throws IOException;
 
   /**
    * Downloads the <b>pom.xml</b> and the <b>JAR</b> file
@@ -46,6 +50,6 @@ public interface DependencyDownloader {
    * sub-dependencies, which are taken from the <b>pom.xml</b>
    * file.
    */
-  List<File> downloadSubDependencies(MavenDependency dependency);
+  List<File> downloadSubDependencies(MavenDependency dependency) throws IOException, SAXException, ParserConfigurationException;
 
 }

@@ -29,19 +29,15 @@ public class MavenRepository {
     return url;
   }
 
-  public boolean requiresAuth() {
+  public boolean requiresAuth() throws IOException {
     HttpURLConnection connection = HTTPConnectionFactory.createConnection(
       url,
       "runtime-deps"
     );
 
-    try {
-      int responseCode = connection.getResponseCode();
+    int responseCode = connection.getResponseCode();
 
-      return responseCode == 401 || responseCode == 403;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    return responseCode == 401 || responseCode == 403;
   }
 
   @Override

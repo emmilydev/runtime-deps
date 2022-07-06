@@ -6,8 +6,11 @@ import com.emmily.runtimedeps.download.BasicSchemeDependencyDownloader;
 import com.emmily.runtimedeps.download.DependencyDownloader;
 import com.emmily.runtimedeps.load.DependencyLoader;
 import org.junit.Test;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Collections;
@@ -15,7 +18,7 @@ import java.util.Collections;
 public class DependencyDownloadTest {
 
   @Test
-  public void runTest() throws ClassNotFoundException {
+  public void runTest() throws ReflectiveOperationException, IOException, ParserConfigurationException, SAXException {
     DependencyDownloader dependencyDownloader = new BasicSchemeDependencyDownloader(
       "runtime-deps",
       Collections.emptyMap(),

@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -22,24 +23,20 @@ public interface HTTPConnectionFactory {
    */
   static HttpURLConnection createConnection(String url,
                                             String userAgent,
-                                            @Nullable String authorizationHeader) {
-    try {
-      URL actualURL = new URL(url);
-      HttpURLConnection connection = (HttpURLConnection) actualURL.openConnection();
-      connection.setRequestProperty("User-Agent", userAgent);
+                                            @Nullable String authorizationHeader) throws IOException {
+    URL actualURL = new URL(url);
+    HttpURLConnection connection = (HttpURLConnection) actualURL.openConnection();
+    connection.setRequestProperty("User-Agent", userAgent);
 
-      if (authorizationHeader != null) {
-        connection.setRequestProperty("Authorization", authorizationHeader);
-      }
-
-      return connection;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    if (authorizationHeader != null) {
+      connection.setRequestProperty("Authorization", authorizationHeader);
     }
+
+    return connection;
   }
 
   static HttpURLConnection createConnection(String url,
-                                            String userAgent) {
+                                            String userAgent) throws IOException {
     return createConnection(url, userAgent, null);
   }
 
@@ -50,7 +47,7 @@ public interface HTTPConnectionFactory {
   static HttpURLConnection createConnection(String url,
                                             String userAgent,
                                             String username,
-                                            String password) {
+                                            String password) throws IOException {
     return createConnection(
       url,
       userAgent,

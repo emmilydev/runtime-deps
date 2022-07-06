@@ -31,13 +31,9 @@ public class DependencyLoader {
     this.classLoader = (URLClassLoader) classLoader;
   }
 
-  public void loadDependencies(List<File> dependencies) {
+  public void loadDependencies(List<File> dependencies) throws MalformedURLException, ReflectiveOperationException {
     for (File file : dependencies) {
-      try {
-        ADD_URL.invoke(classLoader, file.toURI().toURL());
-      } catch (ReflectiveOperationException | MalformedURLException e) {
-        throw new RuntimeException(e);
-      }
+      ADD_URL.invoke(classLoader, file.toURI().toURL());
     }
   }
 
