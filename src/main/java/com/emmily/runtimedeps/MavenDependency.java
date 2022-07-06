@@ -1,5 +1,7 @@
 package com.emmily.runtimedeps;
 
+import com.emmily.runtimedeps.format.DependencyURLFormatter;
+
 /**
  * Represents a Maven dependency.
  */
@@ -44,10 +46,11 @@ public class MavenDependency {
   }
 
   public String getUrl(String extension) {
-    return mavenRepository.getUrl() +
-      groupId.replace(".", "/") + "/" +
-      ((artifactId.contains(".")) ? artifactId : artifactId.replace(".", "/")) + "/" +
-      version + "/" + filename + extension;
+    return mavenRepository.getUrl() + DependencyURLFormatter.format(
+      groupId,
+      artifactId,
+      version
+    ) + filename + extension;
   }
 
   public String getPomUrl() {

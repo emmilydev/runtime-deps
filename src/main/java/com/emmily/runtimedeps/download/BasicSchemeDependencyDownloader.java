@@ -4,6 +4,7 @@ import com.emmily.runtimedeps.MavenDependency;
 import com.emmily.runtimedeps.MavenRepository;
 import com.emmily.runtimedeps.connection.HTTPConnectionFactory;
 import com.emmily.runtimedeps.download.version.DependencyVersionResolver;
+import com.emmily.runtimedeps.format.DependencyURLFormatter;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -119,13 +120,11 @@ public class BasicSchemeDependencyDownloader implements DependencyDownloader {
         for (MavenRepository repository : repositories) {
           if (version == null) {
             version = DependencyVersionResolver.getLatestVersion(
-              createConnection(
-                repository.getUrl() +
-                  groupId.replace(".", "/") + "/" +
-                  ((artifactId.contains(".")) ? artifactId : artifactId.replace(".", "/")) +
-                  "/",
-                repository
-              )
+              createConnection(repository.getUrl() + DependencyURLFormatter.format(
+                groupId,
+                artifactId,
+                ""
+              ), repository)
             );
           }
 
@@ -178,12 +177,11 @@ public class BasicSchemeDependencyDownloader implements DependencyDownloader {
                                 String artifactId,
                                 String version,
                                 MavenRepository repository) {
-    String url = repository.getUrl() +
-      groupId.replace(".", "/") + "/" +
-      ((artifactId.contains(".")) ? artifactId : artifactId.replace(".", "/")) + "/" +
-      version + "/";
-
-    HttpURLConnection connection = createConnection(url, repository);
+    HttpURLConnection connection = createConnection(repository.getUrl() + DependencyURLFormatter.format(
+      groupId,
+      artifactId,
+      version
+    ), repository);
 
     try {
       int responseCode = connection.getResponseCode();

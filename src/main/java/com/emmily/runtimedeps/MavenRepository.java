@@ -18,7 +18,7 @@ public class MavenRepository {
   public MavenRepository(String id,
                          String url) {
     this.id = id;
-    this.url = url;
+    this.url = url.endsWith("/") ? url : url + "/";
   }
 
   public String getId() {
