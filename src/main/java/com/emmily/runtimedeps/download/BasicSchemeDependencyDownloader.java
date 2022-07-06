@@ -5,13 +5,13 @@ import com.emmily.runtimedeps.MavenRepository;
 import com.emmily.runtimedeps.connection.HTTPConnectionFactory;
 import com.emmily.runtimedeps.download.version.DependencyVersionResolver;
 import com.emmily.runtimedeps.format.DependencyURLFormatter;
+import com.emmily.runtimedeps.xml.XMLDocumentProvider;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Map;
 
 public class BasicSchemeDependencyDownloader implements DependencyDownloader {
-
-  private static final DocumentBuilderFactory BUILDER_FACTORY = DocumentBuilderFactory.newInstance();
 
   private final String userAgent;
   private final Map<String, String> repositoryCredentials;
@@ -62,7 +60,7 @@ public class BasicSchemeDependencyDownloader implements DependencyDownloader {
     result.add(downloadJar(dependency));
 
     try {
-      Document xmlDocument = BUILDER_FACTORY.newDocumentBuilder().parse(pomFile);
+      Document xmlDocument = XMLDocumentProvider.getDocument(pomFile);
 
       //#region scan-repositories
       List<MavenRepository> repositories = new ArrayList<>();
@@ -123,7 +121,8 @@ public class BasicSchemeDependencyDownloader implements DependencyDownloader {
               createConnection(repository.getUrl() + DependencyURLFormatter.format(
                 groupId,
                 artifactId,
-                ""
+                "",
+                "maven-metadata.xml"
               ), repository)
             );
           }

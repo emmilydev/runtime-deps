@@ -1,34 +1,22 @@
 package com.emmily.runtimedeps.download.version;
 
+import com.emmily.runtimedeps.xml.XMLDocumentProvider;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class DependencyVersionResolver {
 
-  private static final Pattern VERSION_PATTERN = Pattern.compile("[+]?\\d+\\.[+]?\\d+\\.[+]?\\d+/");
+  public static String getLatestVersion(HttpURLConnection connection) throws IOException, SAXException {
+    try (
+      InputStream inputStream = connection.getInputStream()
+    ) {
+      Document document = XMLDocumentProvider.getDocument(inputStream);
 
-  public static String getLatestVersion(HttpURLConnection connection) {
-    try {
-      Scanner scanner = new Scanner(connection.getInputStream()).useDelimiter("\\A");
-      String html = scanner.next();
-
-      Matcher matcher = VERSION_PATTERN.matcher(html);
-      String version = null;
-
-      while (matcher.find()) {
-        version = html.substring(matcher.start(), matcher.end());
-      }
-
-      if (version == null) {
-        return null;
-      }
-
-      return version.replace("/", "");
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+      return document.getElementsByTagName("latest").item(0).getTextContent();
     }
   }
 
