@@ -1,74 +1,55 @@
 package com.emmily.runtimedeps;
 
-import com.emmily.runtimedeps.format.DependencyURLFormatter;
+import com.emmily.runtimedeps.format.DependencyUrlFormatter;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Repository;
 
-/**
- * Represents a Maven dependency.
- */
-public class MavenDependency {
+public class MavenDependency extends Dependency {
 
-  private final String groupId;
-  private final String artifactId;
-  private final String version;
-  private final String filename;
-  private final MavenRepository mavenRepository;
+  private Repository repository;
 
-  public MavenDependency(String groupId,
-                         String artifactId,
-                         String version,
-                         String filename,
-                         MavenRepository mavenRepository) {
-    this.groupId = groupId;
-    this.artifactId = artifactId;
-    this.version = version;
-    this.filename = filename;
-    this.mavenRepository = mavenRepository;
+  public MavenDependency(Repository repository) {
+    this.repository = repository;
   }
 
-  public String getGroupId() {
-    return groupId;
+  public Repository getRepository() {
+    return repository;
   }
 
-  public String getArtifactId() {
-    return artifactId;
+  public void setRepository(Repository repository) {
+    this.repository = repository;
   }
 
-  public String getVersion() {
-    return version;
-  }
+  private String getUrl(FileType fileType) {
+    if (fileType == FileType.MAVEN_METADATA) {
+      return DependencyUrlFormatter.format(
+        repository.getUrl(),
+        getGroupId(),
+        getArtifactId(),
+        getVersion(),
+        "maven-metadata.xml"
+      );
+    }
 
-  public String getFilename() {
-    return filename;
-  }
-
-  public MavenRepository getMavenRepository() {
-    return mavenRepository;
-  }
-
-  public String getUrl(String extension) {
-    return mavenRepository.getUrl() + DependencyURLFormatter.format(
-      groupId,
-      artifactId,
-      version
-    ) + filename + extension;
-  }
-
-  public String getPomUrl() {
-    return getUrl(".pom");
+    return DependencyUrlFormatter.format(
+      repository.getUrl(),
+      getGroupId(),
+      getArtifactId(),
+      getVersion(),
+      String.format(fileType.getName(), getArtifactId() + "-" + getVersion())
+    );
   }
 
   public String getJarUrl() {
-    return getUrl(".jar");
+    return getUrl(FileType.JAR);
   }
 
-  @Override
-  public String toString() {
-    return "MavenDependency{" +
-      "groupId='" + groupId + '\'' +
-      ", artifactId='" + artifactId + '\'' +
-      ", version='" + version + '\'' +
-      ", filename='" + filename + '\'' +
-      ", mavenRepository=" + mavenRepository +
-      '}';
+  public String getPomUrl() {
+    return getUrl(FileType.POM);
   }
+
+  public String getMavenMetadataUrl() {
+    return getUrl(FileType.MAVEN_METADATA);
+  }
+
 }
