@@ -1,70 +1,109 @@
 package com.emmily.runtimedeps.download;
 
-import com.emmily.runtimedeps.FileType;
-import com.emmily.runtimedeps.MavenDependency;
 import com.emmily.runtimedeps.auth.Authorizer;
+import com.emmily.runtimedeps.channel.DelegatingReadableByteChannel;
 import com.emmily.runtimedeps.connection.HttpConnectionBuilder;
+import com.emmily.runtimedeps.dependency.FileType;
+import com.emmily.runtimedeps.dependency.MavenDependency;
+import com.emmily.runtimedeps.exception.RepositoryOfflineException;
 import com.emmily.runtimedeps.exception.UnauthorizedClientException;
-import com.emmily.runtimedeps.util.RepositoryUtils;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Repository;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import com.emmily.runtimedeps.format.UrlFormatter;
+import com.emmily.runtimedeps.repository.MavenRepository;
+import com.emmily.runtimedeps.repository.RepositoryUtils;
+import com.emmily.runtimedeps.resolver.dependency.DependencyResolver;
+import com.emmily.runtimedeps.resolver.dependency.ElementDependencyResolver;
+import com.emmily.runtimedeps.resolver.dependency.SubDependenciesResolver;
+import com.emmily.runtimedeps.xml.XmlHelper;
+import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
-import javax.xml.stream.XMLStreamException;
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.logging.Logger;
 
 public class DefaultDependencyDownloader implements DependencyDownloader {
 
-  private static final MavenXpp3Reader POM_READER = new MavenXpp3Reader();
-
-  private final File folder;
+  private final File destinationFolder;
   private final Logger logger;
   private final Authorizer authorizer;
+  private DependencyResolver<Element> subDependenciesResolver;
 
-  public DefaultDependencyDownloader(File folder,
+  public DefaultDependencyDownloader(File destinationFolder,
                                      Logger logger,
-                                     Authorizer authorizer) {
-    this.folder = folder;
+                                     Authorizer authorizer,
+                                     DependencyResolver<Element> subDependenciesResolver) {
+    this.destinationFolder = destinationFolder;
     this.logger = logger;
     this.authorizer = authorizer;
+    this.subDependenciesResolver = subDependenciesResolver;
+
+    if (!destinationFolder.exists() && !destinationFolder.mkdir()) {
+      logger.severe("Dependencies: Unable to create the destination folder.");
+    }
+  }
+
+  public DefaultDependencyDownloader(File destinationFolder,
+                                     Logger logger,
+                                     Authorizer authorizer,
+                                     Collection<String> exclusions,
+                                     List<MavenRepository> knownRepositories) {
+    this(
+      destinationFolder,
+      logger,
+      authorizer,
+      null
+    );
+    setSubDependenciesResolver(new SubDependenciesResolver(
+      new ElementDependencyResolver(
+        exclusions,
+        logger,
+        knownRepositories,
+        authorizer,
+        this
+      ),
+      this,
+      logger
+    ));
   }
 
   @Override
-  public Collection<File> downloadAll(MavenDependency dependency) throws IOException, SAXException {
-    return null;
-  }
-
-  @Override
-  public File downloadFile(MavenDependency dependency,
+  public File downloadFile(MavenDependency mavenDependency,
                            FileType fileType) throws IOException {
-    String url = null;
+    File file = new File(destinationFolder, String.format(
+      fileType.getName(),
+      mavenDependency.getArtifactId(),
+      mavenDependency.getVersion()
+    ));
 
-    switch (fileType) {
-      case POM: {
-        url = dependency.getPomUrl();
-
-        break;
-      }
-      case JAR: {
-        url = dependency.getJarUrl();
-
-        break;
-      }
-      case MAVEN_METADATA: {
-        url = dependency.getMavenMetadataUrl();
-
-        break;
-      }
+    if (file.exists()) {
+      return file;
     }
 
+    long start = System.currentTimeMillis();
+
+    logger.info(String.format(
+      "Dependencies: Downloading the %s file of the dependency %s...",
+      fileType,
+      mavenDependency.getArtifactId()
+    ));
+
+    MavenRepository repository = mavenDependency.getRepository();
     String authorizationHeader = null;
-    Repository repository = dependency.getRepository();
+
+    if (!RepositoryUtils.healthCheck(repository)) {
+      throw new RepositoryOfflineException(repository);
+    }
 
     if (RepositoryUtils.requiresAuth(repository)) {
       if (!authorizer.isKnown(repository)) {
@@ -76,30 +115,89 @@ public class DefaultDependencyDownloader implements DependencyDownloader {
 
     HttpURLConnection connection = HttpConnectionBuilder
       .builder()
-      .url(url)
+      .url(UrlFormatter.format(mavenDependency, fileType))
       .addProperty("User-Agent", "runtime-deps")
       .addProperty("Authorization", authorizationHeader)
       .build();
-    int responseCode = connection.getResponseCode();
+    int incomingFileLength = connection.getContentLength();
 
-    if (responseCode == 404) {
-      throw new FileNotFoundException(String.format(
-        "Dependencies: The %s file of the dependency %s couldn't be found in the repository %s",
-        fileType,
-        dependency.getArtifactId(),
-        repository.getId()
-      ));
+    /*
+    File file = new File(destinationFolder, String.format(
+      fileType.getName(),
+      mavenDependency.getArtifactId(),
+      mavenDependency.getVersion()
+    ));
+
+     */
+    /*
+    if (file.exists()) {
+      if (Files.size(Paths.get(file.getPath())) < incomingFileLength) {
+        logger.info(String.format(
+          "Dependencies: The %s file of the dependency %s was found locally, but it's smaller than the incoming one. " +
+            "Re-downloading...",
+          fileType,
+          mavenDependency.getArtifactId()
+        ));
+
+        file.delete();
+      } else {
+        return file;
+      }
     }
-    return null;
+
+
+     */
+    try (
+      InputStream inputStream = connection.getInputStream();
+      ReadableByteChannel channel = new DelegatingReadableByteChannel(
+        Channels.newChannel(inputStream),
+        mavenDependency,
+        fileType,
+        logger,
+        incomingFileLength
+      );
+      FileOutputStream outputStream = new FileOutputStream(file)
+    ) {
+      outputStream.getChannel().transferFrom(channel, 0, incomingFileLength);
+    }
+
+    logger.info(String.format(
+      "Dependencies: Successfully downloaded the %s file of the dependency %s (%s ms)",
+      fileType,
+      mavenDependency.getArtifactId(),
+      System.currentTimeMillis() - start
+    ));
+
+    return file;
   }
 
   @Override
-  public Collection<Dependency> getSubDependencies(MavenDependency dependency) throws IOException, XMLStreamException, SAXException {
-    return null;
+  public Collection<File> downloadFiles(MavenDependency mavenDependency,
+                                        FileType... fileTypes) throws IOException {
+    Collection<File> files = new ArrayList<>();
+
+    for (FileType fileType : fileTypes) {
+      files.add(downloadFile(mavenDependency, fileType));
+    }
+
+    return files;
   }
 
   @Override
-  public Collection<Repository> getRepositories(MavenDependency dependency) throws IOException, SAXException {
-    return null;
+  public Collection<File> downloadAll(MavenDependency mavenDependency) throws IOException, SAXException {
+    Collection<MavenDependency> dependencyTree = subDependenciesResolver.resolve(
+      XmlHelper.getElement(downloadFile(mavenDependency, FileType.POM))
+    );
+    Collection<File> dependencies = new ArrayList<>();
+
+    for (MavenDependency subDependency : dependencyTree) {
+      dependencies.add(downloadFile(subDependency, FileType.JAR));
+    }
+
+    return dependencies;
+  }
+
+  public void setSubDependenciesResolver(DependencyResolver<Element> subDependenciesResolver) {
+    this.subDependenciesResolver = subDependenciesResolver;
   }
 }

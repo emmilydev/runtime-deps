@@ -1,9 +1,9 @@
-package com.emmily.runtimedeps;
+package com.emmily.runtimedeps.dependency;
 
 public enum FileType {
 
-  JAR("%s.jar"),
-  POM("%s.pom"),
+  JAR("%s-%s.jar"),
+  POM("%s-%s.pom"),
   MAVEN_METADATA("maven-metadata.xml");
 
   private final String name;
@@ -15,4 +15,5 @@ public enum FileType {
   public String getName() {
     return name;
   }
+
 }

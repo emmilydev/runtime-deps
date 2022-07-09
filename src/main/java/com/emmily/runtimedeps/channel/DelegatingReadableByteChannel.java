@@ -1,7 +1,7 @@
 package com.emmily.runtimedeps.channel;
 
-import com.emmily.runtimedeps.FileType;
-import com.emmily.runtimedeps.MavenDependency;
+import com.emmily.runtimedeps.dependency.FileType;
+import com.emmily.runtimedeps.dependency.MavenDependency;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
